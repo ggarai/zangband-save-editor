@@ -16,7 +16,11 @@ from pathlib import Path
 try:
     from flask import Flask, request, jsonify, render_template_string
 except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "flask", "--break-system-packages", "-q"])
+    import platform
+    pip_args = [sys.executable, "-m", "pip", "install", "flask", "-q"]
+    if platform.system() != "Windows":
+        pip_args.append("--break-system-packages")
+    subprocess.check_call(pip_args)
     from flask import Flask, request, jsonify, render_template_string
 
 # ---------------------------------------------------------------------------
@@ -24,7 +28,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 HERE = Path(__file__).parent
-CODEC = Path.home() / "Git" / "zangband" / "zangband_save.py"
+CODEC = HERE / "zangband_save.py"
 
 # ---------------------------------------------------------------------------
 # Data tables (from tables.c)
