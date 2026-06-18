@@ -1018,9 +1018,9 @@ $fg = [WH]::GetForegroundWindow()
 $p = 0
 $fgThread = [WH]::GetWindowThreadProcessId($fg, [ref]$p)
 $myThread = [WH]::GetCurrentThreadId()
-[WH]::AttachThreadInput($myThread, $fgThread, $true)
-[WH]::SetForegroundWindow($owner.Handle)
-[WH]::AttachThreadInput($myThread, $fgThread, $false)
+$null = [WH]::AttachThreadInput($myThread, $fgThread, $true)
+$null = [WH]::SetForegroundWindow($owner.Handle)
+$null = [WH]::AttachThreadInput($myThread, $fgThread, $false)
 $f = New-Object System.Windows.Forms.OpenFileDialog
 $f.Title = 'Select Zangband save file'
 $null = $f.ShowDialog($owner)
