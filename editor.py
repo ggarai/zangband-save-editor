@@ -998,6 +998,7 @@ def browse():
                 "Add-Type -AssemblyName System.Windows.Forms; "
                 "$f = New-Object System.Windows.Forms.OpenFileDialog; "
                 "$f.Title = 'Select Zangband save file'; "
+                "$f.TopMost = $true; "
                 "$null = $f.ShowDialog(); "
                 "$f.FileName"
             )
@@ -1133,8 +1134,17 @@ def save():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    import socket
     port = 5174
     url = f"http://127.0.0.1:{port}"
-    print(f"Zangband Save Editor running at {url}")
-    threading.Timer(0.8, lambda: webbrowser.open(url)).start()
-    app.run(port=port, debug=False)
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as _s:
+        already_running = _s.connect_ex(("127.0.0.1", port)) == 0
+
+    if already_running:
+        print(f"Editor already running at {url} — opening browser.")
+        webbrowser.open(url)
+    else:
+        print(f"Zangband Save Editor running at {url}")
+        threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+        app.run(port=port, debug=False)
