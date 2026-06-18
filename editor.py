@@ -996,10 +996,16 @@ def browse():
         if platform.system() == "Windows":
             ps = (
                 "Add-Type -AssemblyName System.Windows.Forms; "
+                "$owner = New-Object System.Windows.Forms.Form; "
+                "$owner.TopMost = $true; "
+                "$owner.StartPosition = 'Manual'; "
+                "$owner.Location = New-Object System.Drawing.Point(-2000,-2000); "
+                "$owner.Size = New-Object System.Drawing.Size(1,1); "
+                "$owner.Show(); "
                 "$f = New-Object System.Windows.Forms.OpenFileDialog; "
                 "$f.Title = 'Select Zangband save file'; "
-                "$f.TopMost = $true; "
-                "$null = $f.ShowDialog(); "
+                "$null = $f.ShowDialog($owner); "
+                "$owner.Dispose(); "
                 "$f.FileName"
             )
             r = subprocess.run(
