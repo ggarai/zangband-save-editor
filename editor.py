@@ -994,30 +994,50 @@ def browse():
     try:
         import platform
         if platform.system() == "Windows":
-            ps = (
-                "Add-Type -AssemblyName System.Windows.Forms; "
-                "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; "
-                "public class WinHelper { "
-                "[DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(IntPtr hWnd); "
-                "}'; "
-                "$owner = New-Object System.Windows.Forms.Form; "
-                "$owner.TopMost = $true; "
-                "$owner.StartPosition = 'Manual'; "
-                "$owner.Location = New-Object System.Drawing.Point(-2000,-2000); "
-                "$owner.Size = New-Object System.Drawing.Size(1,1); "
-                "$owner.Show(); "
-                "[WinHelper]::SetForegroundWindow($owner.Handle); "
-                "$f = New-Object System.Windows.Forms.OpenFileDialog; "
-                "$f.Title = 'Select Zangband save file'; "
-                "$null = $f.ShowDialog($owner); "
-                "$owner.Dispose(); "
-                "$f.FileName"
-            )
-            r = subprocess.run(
-                ["powershell", "-NoProfile", "-Command", ps],
-                capture_output=True, text=True, timeout=60
-            )
-            path = r.stdout.strip()
+            import tempfile, os
+            ps_script = r"""
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class WH {
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);
+    [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool f);
+    [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+}
+"@
+$owner = New-Object System.Windows.Forms.Form
+$owner.TopMost = $true
+$owner.StartPosition = 'Manual'
+$owner.Location = New-Object System.Drawing.Point(-2000,-2000)
+$owner.Size = New-Object System.Drawing.Size(1,1)
+$owner.Show()
+$fg = [WH]::GetForegroundWindow()
+$p = 0
+$fgThread = [WH]::GetWindowThreadProcessId($fg, [ref]$p)
+$myThread = [WH]::GetCurrentThreadId()
+[WH]::AttachThreadInput($myThread, $fgThread, $true)
+[WH]::SetForegroundWindow($owner.Handle)
+[WH]::AttachThreadInput($myThread, $fgThread, $false)
+$f = New-Object System.Windows.Forms.OpenFileDialog
+$f.Title = 'Select Zangband save file'
+$null = $f.ShowDialog($owner)
+$owner.Dispose()
+Write-Output $f.FileName
+"""
+            tf = tempfile.NamedTemporaryFile(mode='w', suffix='.ps1', delete=False)
+            tf.write(ps_script)
+            tf.close()
+            try:
+                r = subprocess.run(
+                    ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", tf.name],
+                    capture_output=True, text=True, timeout=60
+                )
+                path = r.stdout.strip()
+            finally:
+                os.unlink(tf.name)
             return jsonify({"path": path or None})
 
         # Linux/macOS: try zenity, kdialog, then tkinter
