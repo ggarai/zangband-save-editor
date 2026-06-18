@@ -991,23 +991,38 @@ def index():
 def browse():
     """Open a native file picker. Falls through to the next tool only if the
     previous one was not found (exit 127). If the user cancels, returns path=null."""
-    dialogs = [
-        ["zenity", "--file-selection", "--title=Select Zangband save file"],
-        ["kdialog", "--getopenfilename", ".", "--title", "Select Zangband save file"],
-    ]
     try:
+        import platform
+        if platform.system() == "Windows":
+            ps = (
+                "Add-Type -AssemblyName System.Windows.Forms; "
+                "$f = New-Object System.Windows.Forms.OpenFileDialog; "
+                "$f.Title = 'Select Zangband save file'; "
+                "$null = $f.ShowDialog(); "
+                "$f.FileName"
+            )
+            r = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps],
+                capture_output=True, text=True, timeout=60
+            )
+            path = r.stdout.strip()
+            return jsonify({"path": path or None})
+
+        # Linux/macOS: try zenity, kdialog, then tkinter
+        dialogs = [
+            ["zenity", "--file-selection", "--title=Select Zangband save file"],
+            ["kdialog", "--getopenfilename", ".", "--title", "Select Zangband save file"],
+        ]
         for cmd in dialogs:
             try:
                 r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             except FileNotFoundError:
-                continue  # tool not installed, try next
+                continue
             if r.returncode == 0:
                 return jsonify({"path": r.stdout.strip()})
             else:
-                # Tool ran (user cancelled, or display error); don't fall through
                 return jsonify({"path": None})
 
-        # Neither GUI tool found — try tkinter subprocess
         script = (
             "import tkinter as tk; from tkinter import filedialog; "
             "root = tk.Tk(); root.withdraw(); "
