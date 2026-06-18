@@ -996,12 +996,17 @@ def browse():
         if platform.system() == "Windows":
             ps = (
                 "Add-Type -AssemblyName System.Windows.Forms; "
+                "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; "
+                "public class WinHelper { "
+                "[DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(IntPtr hWnd); "
+                "}'; "
                 "$owner = New-Object System.Windows.Forms.Form; "
                 "$owner.TopMost = $true; "
                 "$owner.StartPosition = 'Manual'; "
                 "$owner.Location = New-Object System.Drawing.Point(-2000,-2000); "
                 "$owner.Size = New-Object System.Drawing.Size(1,1); "
                 "$owner.Show(); "
+                "[WinHelper]::SetForegroundWindow($owner.Handle); "
                 "$f = New-Object System.Windows.Forms.OpenFileDialog; "
                 "$f.Title = 'Select Zangband save file'; "
                 "$null = $f.ShowDialog($owner); "
